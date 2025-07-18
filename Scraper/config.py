@@ -21,24 +21,25 @@ PHONE_REGEX = re.compile(
     re.VERBOSE
 )
 
-
-ADDRESS_KEYWORDS = ['street', 'st.', 'ave', 'road', 'rd.', 'zip', 'city', 'state', 'postcode', 'hood', 'home']
-
-LOCATION_KEYWORDS = [
-    'city', 'country', 'state', 'province', 'region', 'sector',
-    'district', 'territory', 'municipality', 'area', 'village'
+ADDRESS_KEYWORDS = [
+    'address', 'add', 'adr', 'street', 'number', 'st', 'ave', 'avenue', 'road', 'boulevard', 'blvd',
+    'unit', 'block', 'floor', 'building','drive', 'zip', 'postcode', 'postal code', 'suite', 'apt',
+    'no', 'house'
 ]
 
-TIMEOUT = 5  # seconds for HTTP requests
+LOCATION_KEYWORDS = [
+    'city', 'country', 'province', 'region', 'sector',
+    'district', 'territory', 'municipality', 'area', 'village',
+    'metropolitan', 'county', 'island', 'state',
+]
+
+TIMEOUT = 3  # seconds for HTTP requests
 
 # Database table names as a list: 0 - companies, 1 - company_details, 2 - urls
 TABLE_NAMES = ['companies', 'company_details', 'urls']
 
 # Columns in company_details table
 COMPANY_DETAILS_COLUMNS = ['phone', 'address', 'location']
-
-# Number of search results to fetch
-SEARCH_RESULT_COUNT = 5
 
 # default CSV file for initial URLs / social domains
 INITIAL_URLS_CSV_PATH = 'sample-websites.csv'

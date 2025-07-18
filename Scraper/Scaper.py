@@ -4,6 +4,7 @@ from sqlite3 import IntegrityError
 import requests
 from bs4 import BeautifulSoup
 import psycopg2
+from psycopg2.extras import execute_values
 import time
 from collections import deque
 from config import (
@@ -71,18 +72,33 @@ def load_initial_urls():
 
 def save_company(cursor, initial_url):
     cursor.execute(
-        f"INSERT INTO {COMPANIES_TBL} (names) VALUES (ARRAY[%s]) "
-        "ON CONFLICT (names) DO NOTHING RETURNING id;",
-        (initial_url,)
-    )
-    res = cursor.fetchone()
-    if res:
-        return res[0]
-    cursor.execute(
         f"SELECT id FROM {COMPANIES_TBL} WHERE %s = ANY(names);",
         (initial_url,)
     )
+    row = cursor.fetchone()
+    if row:
+        return row[0]
+
+    cursor.execute(
+        f"INSERT INTO {COMPANIES_TBL} (names) VALUES (ARRAY[%s]) RETURNING id;",
+        (initial_url,)
+    )
     return cursor.fetchone()[0]
+
+# def save_company(cursor, initial_url):
+#     cursor.execute(
+#         f"INSERT INTO {COMPANIES_TBL} (names) VALUES (ARRAY[%s]) "
+#         "ON CONFLICT (names) DO NOTHING RETURNING id;",
+#         (initial_url,)
+#     )
+#     res = cursor.fetchone()
+#     if res:
+#         return res[0]
+#     cursor.execute(
+#         f"SELECT id FROM {COMPANIES_TBL} WHERE %s = ANY(names);",
+#         (initial_url,)
+#     )
+#     return cursor.fetchone()[0]
 
 def update_company_name(cursor, company_id, title):
     try:
@@ -101,6 +117,33 @@ def update_company_name(cursor, company_id, title):
     except IntegrityError:
         return None
 
+def update_company_names_bulk(cursor, company_id, titles):
+    """
+    Appends multiple titles to a company's names array in bulk,
+    avoiding duplicates.
+    """
+    if not titles:
+        return  # nothing to update
+
+    try:
+        sql = f"""
+        UPDATE {COMPANIES_TBL}
+        SET names = (
+            SELECT array_agg(DISTINCT elem)
+            FROM unnest(names || %s) AS elem
+        )
+        WHERE id = %s
+        RETURNING names;
+        """
+        cursor.execute(sql, (list(titles), company_id))
+        row = cursor.fetchone()
+        if row:
+            #print(f"Updated titles for company_id {company_id}: {row[0]}")
+            return row[0]
+        return None
+    except IntegrityError:
+        return None
+
 
 
 def save_detail(cursor, company_id, detail_type, detail_value):
@@ -109,6 +152,22 @@ def save_detail(cursor, company_id, detail_type, detail_value):
         "ON CONFLICT (company_id, detail_type, detail_value) DO NOTHING;",
         (company_id, detail_type, detail_value)
     )
+
+def save_details_bulk(cursor, company_id, detail_type, detail_values):
+    """
+    Insert multiple details for one company in bulk.
+    Skips duplicates using ON CONFLICT DO NOTHING and set for DS .
+    """
+    if not detail_values:
+        return  # nothing to save
+
+    records = [(company_id, detail_type, val) for val in detail_values]
+    sql = (
+        f"INSERT INTO {DETAILS_TBL} (company_id, detail_type, detail_value) "
+        "VALUES %s "
+        "ON CONFLICT (company_id, detail_type, detail_value) DO NOTHING;"
+    )
+    execute_values(cursor, sql, records)
 
 def save_link(cursor, company_id, url, reached=False):
     cursor.execute(
@@ -126,16 +185,19 @@ def extract_links(soup, queue, seen):
         href = a['href']
         if href not in seen:
             seen.add(href)
-            if (href.startswith("http://") or href.startswith("https://") or href.startswith(
-                    "www")) and '../' not in href \
-                    and '..' not in href and (href.count('.com') < 1):
+            if (href.startswith("http")
+                    and '../' not in href
+                    and '..' not in href
+                    and (href.count('.com') < 1)):
                 queue.append(href)
 
 def extract_address(soup):
     results = set()
     for tag in soup.find_all(['address', 'p', 'div', 'span']):
         txt = tag.get_text(separator=' ').strip()
-        if any(word in txt.lower() for word in ADDRESS_KEYWORDS) and 10 < len(txt) < 50:
+        txt = txt.replace('\n', ' ').replace('\r', ' ').strip()
+        txt = ' '.join(txt.split())  # collapse multiple spaces
+        if any(word in txt.lower() for word in ADDRESS_KEYWORDS) and 7 < len(txt) < 80:
             results.add(txt)
     return results
 
@@ -143,16 +205,27 @@ def extract_location(soup):
     results = set()
     for tag in soup.find_all(['p', 'div', 'span']):
         txt = tag.get_text(separator=' ').strip()
-        if any(word in txt.lower() for word in LOCATION_KEYWORDS) and 5 < len(txt) < 100:
+        txt = txt.replace('\n', ' ').replace('\r', ' ').strip()
+        txt = ' '.join(txt.split())  # collapse multiple spaces
+        if any(word in txt.lower() for word in LOCATION_KEYWORDS) and 2 < len(txt) < 40:
             results.add(txt)
     return results
 
 def extract_title(soup):
     results = set()
-    for tag in soup.find_all(['title']):
+    for tag in soup.find_all(['title', 'h1']):
         txt = tag.get_text(separator=' ').strip()
-        if 2 < len(txt) < 60:
+        txt = txt.replace('\n', ' ').replace('\r', ' ').strip()
+        txt = ' '.join(txt.split())  # collapse multiple spaces
+        if 2 < len(txt) < 50:
             results.add(txt)
+    meta_tags = soup.find_all('meta', attrs={'name': 'title'}) + \
+                soup.find_all('meta', attrs={'property': 'og:title'})
+    for meta in meta_tags:
+        content = meta.get('content', '').strip()
+        if 2 < len(content) < 35:
+            results.add(content)
+
     return results
 
 def scrape_company(initial_url, cursor):
@@ -196,16 +269,24 @@ def process_url(cursor, company_id, url, queue, seen):
                 soup = BeautifulSoup(content, 'lxml')
 
             titles = set(extract_title(soup))
-            for title in titles:
-                print(f"Updated title for company_id: {company_id}; title: {title}")
-                update_company_name(cursor, company_id, title)
+            update_company_names_bulk(cursor, company_id, titles)
+            # for title in titles:
+            #     print(f"Updated title for company_id: {company_id}; title: {title}")
+            #     update_company_name(cursor, company_id, title)
 
-            for p in extract_phone(soup):
-                save_detail(cursor, company_id, PHONE_CL, p)
-            for a in extract_address(soup):
-                save_detail(cursor, company_id, ADDRESS_CL, a)
-            for loc in extract_location(soup):
-                save_detail(cursor, company_id, LOCATION_CL, loc)
+            phone_nrs = set(extract_phone(soup))
+            save_details_bulk(cursor, company_id, PHONE_CL, phone_nrs)
+            addresses = set(extract_address(soup))
+            save_details_bulk(cursor, company_id, ADDRESS_CL, addresses)
+            locations = set(extract_location(soup))
+            save_details_bulk(cursor, company_id, LOCATION_CL, locations)
+
+            #for p in extract_phone(soup):
+                #save_detail(cursor, company_id, PHONE_CL, p)
+            # for a in extract_address(soup):
+            #     save_detail(cursor, company_id, ADDRESS_CL, a)
+            # for loc in extract_location(soup):
+            #     save_detail(cursor, company_id, LOCATION_CL, loc)
             extract_links(soup, queue, seen)
         else:
             print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
@@ -276,14 +357,17 @@ if __name__ == '__main__':
     sw.start()
     try:
         if initial_domains:
+            current_domain_contor = 1
             for domain in initial_domains:
+                print(f"Initial domains: {current_domain_contor} / {len(initial_domains)}")
                 scrape_company(domain, cursor)
+                current_domain_contor+=1
                 print(f"Elapsed time since start: {sw.elapsed()}")
         else:
             print('No company urls provided.')
     except Exception as e:
-        print(f"Unexpected error in main method, initial domains count = {initial_domains.__sizeof__()}.\n Error: {e}")
         print(f"Total elapsed time: {sw.elapsed()}. Script managed to close safely, even though it was terminated abruptly.")
+        print(f"Exception: {e}")
     finally:
         cursor.close()
         conn.close()
