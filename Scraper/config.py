@@ -1,7 +1,7 @@
 import re
 
 DB_CONFIG = {
-    'dbname': 'ScraperDb',  # os.getenv('DB_NAME', 'ScraperDb'),
+    'dbname': 'CompaniesDataDb',  # os.getenv('DB_NAME', 'ScraperDb'),
     'user': 'postgres',     # os.getenv('DB_USER', 'postgres'),
     'password': '1234',     # os.getenv('DB_PASSWORD', '1234'),
     'host': 'localhost',    # os.getenv('DB_HOST', 'localhost'),
@@ -15,15 +15,12 @@ USER_AGENT = (
 
 PHONE_REGEX = re.compile(r"(?:\+\d{1,3}[\s-]?)?(?:\(\d+\)[\s-]?)?\d[\d\s-]{7,}\d")
 
-ADDRESS_KEYWORDS = ['street', 'st.', 'ave', 'road', 'rd.', 'zip', 'city', 'state', 'postcode']
+ADDRESS_KEYWORDS = ['street', 'st.', 'ave', 'road', 'rd.', 'zip', 'city', 'state', 'postcode', 'hood', 'home']
 
 LOCATION_KEYWORDS = [
     'city', 'country', 'state', 'province', 'region', 'sector',
-    'district', 'territory', 'municipality', 'zip', 'area', 'village'
+    'district', 'territory', 'municipality', 'area', 'village'
 ]
-
-# initial empty list; to be loaded in main.py from CSV
-SOCIAL_DOMAINS = []
 
 TIMEOUT = 5  # seconds for HTTP requests
 
@@ -38,3 +35,5 @@ SEARCH_RESULT_COUNT = 5
 
 # default CSV file for initial URLs / social domains
 INITIAL_URLS_CSV_PATH = 'sample-websites.csv'
+
+MAX_DEPTH_PER_DOMAIN = 25
