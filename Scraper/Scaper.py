@@ -191,42 +191,44 @@ def extract_links(soup, queue, seen):
                     and (href.count('.com') < 1)):
                 queue.append(href)
 
-def extract_address(soup):
+def clean_text(txt):
+    """Normalize text: remove newlines, collapse spaces."""
+    txt = txt.replace('\n', ' ').replace('\r', ' ').strip()
+    return ' '.join(txt.split())
+
+def extract_by_keywords(soup, tags, keywords, min_len, max_len):
+    """Generalized extractor for address/location."""
     results = set()
-    for tag in soup.find_all(['address', 'p', 'div', 'span']):
-        txt = tag.get_text(separator=' ').strip()
-        txt = txt.replace('\n', ' ').replace('\r', ' ').strip()
-        txt = ' '.join(txt.split())  # collapse multiple spaces
-        if any(word in txt.lower() for word in ADDRESS_KEYWORDS) and 7 < len(txt) < 80:
+    for tag in soup.find_all(tags):
+        txt = clean_text(tag.get_text(separator=' '))
+        if any(word in txt.lower() for word in keywords) and min_len < len(txt) < max_len:
             results.add(txt)
     return results
 
+def extract_address(soup):
+    return extract_by_keywords(
+        soup, ['p', 'div', 'span'], ADDRESS_KEYWORDS, 7, 80
+    )
+
 def extract_location(soup):
-    results = set()
-    for tag in soup.find_all(['p', 'div', 'span']):
-        txt = tag.get_text(separator=' ').strip()
-        txt = txt.replace('\n', ' ').replace('\r', ' ').strip()
-        txt = ' '.join(txt.split())  # collapse multiple spaces
-        if any(word in txt.lower() for word in LOCATION_KEYWORDS) and 2 < len(txt) < 40:
-            results.add(txt)
-    return results
+    return extract_by_keywords(
+        soup, ['p', 'div', 'span'], LOCATION_KEYWORDS, 2, 40
+    )
 
 def extract_title(soup):
     results = set()
     for tag in soup.find_all(['title', 'h1']):
-        txt = tag.get_text(separator=' ').strip()
-        txt = txt.replace('\n', ' ').replace('\r', ' ').strip()
-        txt = ' '.join(txt.split())  # collapse multiple spaces
-        if 2 < len(txt) < 50:
+        txt = clean_text(tag.get_text(separator=' '))
+        if 2 < len(txt) < 35:
             results.add(txt)
-    meta_tags = soup.find_all('meta', attrs={'name': 'title'}) + \
-                soup.find_all('meta', attrs={'property': 'og:title'})
-    for meta in meta_tags:
-        content = meta.get('content', '').strip()
+
+    for meta in soup.find_all('meta', attrs={'name': 'title'}): #+ \
+                 #soup.find_all('meta', attrs={'property': 'og:title'}):
+        content = clean_text(meta.get('content', ''))
         if 2 < len(content) < 35:
             results.add(content)
-
     return results
+
 
 def scrape_company(initial_url, cursor):
     try:
