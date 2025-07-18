@@ -8,12 +8,19 @@ DB_CONFIG = {
     'port': '5432',         # os.getenv('DB_PORT', '5432'),
 }
 
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+}
+
+PHONE_REGEX = re.compile(
+    r"""^
+    \+?                         # optional + at start
+    (?:\d[\s\-().]?){7,20}      # 7–20 groups of digit + optional separator
+    \d$                         # must end with digit
+    """,
+    re.VERBOSE
 )
 
-PHONE_REGEX = re.compile(r"(?:\+\d{1,3}[\s-]?)?(?:\(\d+\)[\s-]?)?\d[\d\s-]{7,}\d")
 
 ADDRESS_KEYWORDS = ['street', 'st.', 'ave', 'road', 'rd.', 'zip', 'city', 'state', 'postcode', 'hood', 'home']
 
@@ -36,4 +43,7 @@ SEARCH_RESULT_COUNT = 5
 # default CSV file for initial URLs / social domains
 INITIAL_URLS_CSV_PATH = 'sample-websites.csv'
 
-MAX_DEPTH_PER_DOMAIN = 25
+MAX_DEPTH_PER_DOMAIN = 5
+
+ARCHIVE_EXTENSIONS = ('.zip', '.tar.gz', '.tar', '.gz', '.rar', '.7z')
+
