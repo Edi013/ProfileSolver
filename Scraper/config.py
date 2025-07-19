@@ -40,7 +40,7 @@ LOCATION_KEYWORDS = [
     'metropolitan', 'county', 'island', 'state',
 ]
 
-TIMEOUT = 3  # seconds for HTTP requests
+TIMEOUT = 3  # seconds for HTTP/HTTPS requests
 
 # Database table names as a list: 0 - companies, 1 - company_details, 2 - urls
 TABLE_NAMES = ['companies', 'company_details', 'urls']
@@ -53,5 +53,7 @@ INITIAL_URLS_CSV_PATH = 'sample-websites.csv'
 
 MAX_DEPTH_PER_DOMAIN = 5
 
-ARCHIVE_EXTENSIONS = ('.zip', '.tar.gz', '.tar', '.gz', '.rar', '.7z')
+FORBIDDEN_EXTENSIONS = ('.zip', '.tar.gz', '.tar', '.gz', '.rar', '.7z')
 
+HTTPS_URL = 'https://'
+HTTP_URL = 'http://'

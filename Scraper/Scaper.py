@@ -14,11 +14,9 @@ from config import (
     COMPANY_DETAILS_COLUMNS,
     INITIAL_URLS_CSV_PATH,
     MAX_DEPTH_PER_DOMAIN,
-    ARCHIVE_EXTENSIONS
+    FORBIDDEN_EXTENSIONS,
+    HTTPS_URL, HTTP_URL
 )
-
-
-MAX_DEPTH_PER_COMPANY = MAX_DEPTH_PER_DOMAIN * 10
 
 # Indices for TABLE_NAMES
 COMPANIES_TBL = TABLE_NAMES[0]
@@ -85,21 +83,6 @@ def save_company(cursor, initial_url):
     )
     return cursor.fetchone()[0]
 
-# def save_company(cursor, initial_url):
-#     cursor.execute(
-#         f"INSERT INTO {COMPANIES_TBL} (names) VALUES (ARRAY[%s]) "
-#         "ON CONFLICT (names) DO NOTHING RETURNING id;",
-#         (initial_url,)
-#     )
-#     res = cursor.fetchone()
-#     if res:
-#         return res[0]
-#     cursor.execute(
-#         f"SELECT id FROM {COMPANIES_TBL} WHERE %s = ANY(names);",
-#         (initial_url,)
-#     )
-#     return cursor.fetchone()[0]
-
 def update_company_name(cursor, company_id, title):
     try:
         cursor.execute(
@@ -138,13 +121,11 @@ def update_company_names_bulk(cursor, company_id, titles):
         cursor.execute(sql, (list(titles), company_id))
         row = cursor.fetchone()
         if row:
-            #print(f"Updated titles for company_id {company_id}: {row[0]}")
+            print(f"Updated titles for company_id {company_id}: {row[0]}")
             return row[0]
         return None
     except IntegrityError:
         return None
-
-
 
 def save_detail(cursor, company_id, detail_type, detail_value):
     cursor.execute(
@@ -154,13 +135,8 @@ def save_detail(cursor, company_id, detail_type, detail_value):
     )
 
 def save_details_bulk(cursor, company_id, detail_type, detail_values):
-    """
-    Insert multiple details for one company in bulk.
-    Skips duplicates using ON CONFLICT DO NOTHING and set for DS .
-    """
     if not detail_values:
-        return  # nothing to save
-
+        return
     records = [(company_id, detail_type, val) for val in detail_values]
     sql = (
         f"INSERT INTO {DETAILS_TBL} (company_id, detail_type, detail_value) "
@@ -176,13 +152,7 @@ def save_link(cursor, company_id, url, reached=False):
         (company_id, url, reached)
     )
 
-def extract_phone(soup):
-    text = soup.get_text(separator=' ')
-    text = clean_text(text)
-    candidates = set(PHONE_REGEX.findall(text))
-    return [c for c in candidates if 9 <= sum(ch.isdigit() for ch in c) <= 15]
-
-def extract_links(soup, queue, seen):
+def discover_new_links(soup, queue, seen):
     for a in soup.find_all('a', href=True):
         href = a['href']
         if href not in seen:
@@ -190,76 +160,79 @@ def extract_links(soup, queue, seen):
             if (href.startswith("http")
                     and '../' not in href
                     and '..' not in href
-                    and (href.count('.com') < 1)):
+                    and (href.count('.com') <= 1)):
                 queue.append(href)
 
 def clean_text(txt):
-    """Normalize text: remove newlines, collapse spaces."""
     txt = txt.replace('\n', ' ').replace('\r', ' ').strip()
     return ' '.join(txt.split())
 
-def extract_by_keywords(soup, tags, keywords, min_len, max_len):
-    """Generalized extractor for address/location."""
-    results = set()
-    for tag in soup.find_all(tags):
-        txt = clean_text(tag.get_text(separator=' '))
-        if any(word in txt.lower() for word in keywords) and min_len < len(txt) < max_len:
-            results.add(txt)
-    return results
+def extract_phone(soup):
+    text = soup.get_text(separator=' ')
+    text = clean_text(text)
+    candidates = set(PHONE_REGEX.findall(text))
+    return [c for c in candidates if 9 <= sum(ch.isdigit() for ch in c) <= 15]
 
-def extract_address(soup):
-    return extract_by_keywords(
-        soup, ['p', 'div', 'span'], ADDRESS_KEYWORDS, 7, 80
-    )
-
-def extract_location(soup):
-    return extract_by_keywords(
-        soup, ['p', 'div', 'span'], LOCATION_KEYWORDS, 2, 40
-    )
+def extract_addresses_locations(soup):
+    addresses = set()
+    locations = set()
+    tags = ['p', 'div', 'span']
+    tags_found = soup.find_all(tags)
+    if tags_found:
+        for tag in tags_found:
+            txt = clean_text(tag.get_text(separator=' '))
+            if any(word in txt.lower() for word in ADDRESS_KEYWORDS) and 7 < len(txt) < 80:
+                addresses.add(txt)
+            if any(word in txt.lower() for word in LOCATION_KEYWORDS) and 2 < len(txt) < 40:
+                locations.add(txt)
+    return addresses, locations
 
 def extract_title(soup):
     results = set()
-    for tag in soup.find_all(['title', 'h1']):
+    for tag in soup.find_all(['title']):
         txt = clean_text(tag.get_text(separator=' '))
         if 2 < len(txt) < 35:
             results.add(txt)
-
-    for meta in soup.find_all('meta', attrs={'name': 'title'}): #+ \
-                 #soup.find_all('meta', attrs={'property': 'og:title'}):
-        content = clean_text(meta.get('content', ''))
-        if 2 < len(content) < 35:
-            results.add(content)
     return results
-
 
 def scrape_company(initial_url, cursor):
     try:
-        new_name = initial_url.split('.')[0]
-        company_id = save_company(cursor, new_name)
-        if not (initial_url.startswith('http://') or initial_url.startswith('https://') or initial_url.startswith('www.')):
-            initial_url = 'https://' + initial_url
-        url = initial_url
-        queue = deque([url])
-        seen = {url}
+        name = initial_url.split('.')[0]
+        company_id = save_company(cursor, name)
+        queue = deque([])
+        seen = {initial_url}
 
         depth = 1
-        while queue and depth < MAX_DEPTH_PER_DOMAIN:
+        reached = process_url(cursor, company_id, initial_url, queue, seen)
+        if not reached:
+            if initial_url.startswith(HTTPS_URL):
+                http_initial_url = initial_url.replace(HTTPS_URL, HTTP_URL)
+                reached_with_http = process_url(cursor, company_id, http_initial_url, queue, seen)
+                if reached_with_http:
+                    print(f"Failed to reach https, but http reached for url: '{http_initial_url}'.")
+                else:
+                    print(f"Failed to reach both https and http for url: '{initial_url}'.")
+                    return
+        while queue and depth <= MAX_DEPTH_PER_DOMAIN:
+            depth += 1
             item = queue.popleft()
-            print('Processing url: ' + item + '\n')
-            process_url(cursor, company_id, item, queue, seen)
-            depth = depth + 1
+            _ = process_url(cursor, company_id, item, queue, seen)
     except Exception as e:
         print(f"Unexpected error while scrape_company method was  running for initial_url: {initial_url}.'\n Error: {e}")
         return
     finally:
-        print(f"Scraping for initial_url: '{initial_url}' completed.")
+        print(f"Completed scraping for initial_url: '{initial_url}'. \n")
 
-def process_url(cursor, company_id, url, queue, seen):
+def process_url(cursor, company_id, url, queue, seen) -> bool:
     reached_url = False
     try:
-        if url.endswith(ARCHIVE_EXTENSIONS):
+        print('Processing url: ' + url)
+
+        if url.endswith(FORBIDDEN_EXTENSIONS):
+            save_link(cursor, company_id, url, reached=reached_url)
             print(f"Skipping archive file: {url}")
-            return
+            print(f"Scraping for link: '{url}' completed, reached: '{reached_url}'.")
+            return reached_url
 
         response = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
         if response.status_code == 200:
@@ -272,46 +245,34 @@ def process_url(cursor, company_id, url, queue, seen):
             else:
                 soup = BeautifulSoup(content, 'lxml')
 
-            titles = set(extract_title(soup))
-            update_company_names_bulk(cursor, company_id, titles)
-            # for title in titles:
-            #     print(f"Updated title for company_id: {company_id}; title: {title}")
-            #     update_company_name(cursor, company_id, title)
+            titles = extract_title(soup)
+            if titles:
+                update_company_names_bulk(cursor, company_id, titles)
 
             phone_nrs = extract_phone(soup)
-            save_details_bulk(cursor, company_id, PHONE_CL, phone_nrs)
-            addresses = extract_address(soup)
-            save_details_bulk(cursor, company_id, ADDRESS_CL, addresses)
-            locations = extract_location(soup)
-            save_details_bulk(cursor, company_id, LOCATION_CL, locations)
+            if phone_nrs:
+                save_details_bulk(cursor, company_id, PHONE_CL, phone_nrs)
+            addresses, locations = extract_addresses_locations(soup)
+            if addresses:
+                save_details_bulk(cursor, company_id, ADDRESS_CL, addresses)
+            if locations:
+                save_details_bulk(cursor, company_id, LOCATION_CL, locations)
 
-            #for p in extract_phone(soup):
-                #save_detail(cursor, company_id, PHONE_CL, p)
-            # for a in extract_address(soup):
-            #     save_detail(cursor, company_id, ADDRESS_CL, a)
-            # for loc in extract_location(soup):
-            #     save_detail(cursor, company_id, LOCATION_CL, loc)
-            extract_links(soup, queue, seen)
+            discover_new_links(soup, queue, seen)
         else:
-            print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
-            return
-
+            print(f"Failed to retrieve webpage. Status code: {response.status_code}")
     except requests.exceptions.ConnectionError:
         print(f"Error: Failed to connect to {url}. The site may be down.")
-        return
     except requests.exceptions.Timeout:
         print(f"Error: Timeout occurred while trying to reach {url}.")
-        return
     except requests.exceptions.RequestException as e:
         print(f"HTTP error scraping {url}: {e}")
-        return
     except Exception as e:
         print(f"Unexpected error while processing {url}: {e}")
-        return
-    finally:
-        save_link(cursor, company_id, url, reached=reached_url)
-        print(f"Scraping for link: '{url}' completed, reached: '{reached_url}'.")
 
+    save_link(cursor, company_id, url, reached=reached_url)
+    print(f"Scraping for link: '{url}' completed, reached: '{reached_url}'.")
+    return reached_url
 
 
 class StopWatch:
@@ -353,7 +314,6 @@ class StopWatch:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-
 if __name__ == '__main__':
     initial_domains = load_initial_urls()
     conn, cursor = connect_db()
@@ -363,6 +323,10 @@ if __name__ == '__main__':
         if initial_domains:
             current_domain_contor = 1
             for domain in initial_domains:
+                if domain.startswith(HTTP_URL):
+                    domain = domain.replace(HTTP_URL, HTTPS_URL)
+                elif not domain.startswith(HTTPS_URL):
+                    domain = HTTPS_URL + domain
                 print(f"Initial domains: {current_domain_contor} / {len(initial_domains)}")
                 scrape_company(domain, cursor)
                 current_domain_contor+=1
