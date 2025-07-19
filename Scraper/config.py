@@ -12,14 +12,21 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 }
 
+# optional + at start,  7–20 groups of digit + optional separator, must end with digit
+# PHONE_REGEX = re.compile(r"^\+?(?:\d[\s\-().]?){7,20}\d$")
+
 PHONE_REGEX = re.compile(
-    r"""^
-    \+?                         # optional + at start
-    (?:\d[\s\-().]?){7,20}      # 7–20 groups of digit + optional separator
-    \d$                         # must end with digit
+    r"""
+    (?<!\w)
+    (?:\+?\d{1,3}[\s\-\.()]*)?
+    (?:\(?\d{2,4}\)?[\s\-\.()]*){2,5}
+    \d{2,4}
+    (?!\w)
     """,
     re.VERBOSE
 )
+
+
 
 ADDRESS_KEYWORDS = [
     'address', 'add', 'adr', 'street', 'number', 'st', 'ave', 'avenue', 'road', 'boulevard', 'blvd',

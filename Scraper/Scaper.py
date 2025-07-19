@@ -178,7 +178,9 @@ def save_link(cursor, company_id, url, reached=False):
 
 def extract_phone(soup):
     text = soup.get_text(separator=' ')
-    return set(PHONE_REGEX.findall(text))
+    text = clean_text(text)
+    candidates = set(PHONE_REGEX.findall(text))
+    return [c for c in candidates if 9 <= sum(ch.isdigit() for ch in c) <= 15]
 
 def extract_links(soup, queue, seen):
     for a in soup.find_all('a', href=True):
@@ -276,11 +278,11 @@ def process_url(cursor, company_id, url, queue, seen):
             #     print(f"Updated title for company_id: {company_id}; title: {title}")
             #     update_company_name(cursor, company_id, title)
 
-            phone_nrs = set(extract_phone(soup))
+            phone_nrs = extract_phone(soup)
             save_details_bulk(cursor, company_id, PHONE_CL, phone_nrs)
-            addresses = set(extract_address(soup))
+            addresses = extract_address(soup)
             save_details_bulk(cursor, company_id, ADDRESS_CL, addresses)
-            locations = set(extract_location(soup))
+            locations = extract_location(soup)
             save_details_bulk(cursor, company_id, LOCATION_CL, locations)
 
             #for p in extract_phone(soup):
