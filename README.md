@@ -2,11 +2,11 @@
 
 ## Overview & Chapters
 
-A multi-stage system for crawling the web, enriching company data, syncing it to databases and Elasticsearch, and exposing a REST API for powerful search capabilities.
+A multi-stage system for crawling the web, enriching company data, synchronizing it to databases and Elasticsearch, and exposing a REST API for powerful search capabilities.
 
 ### Chapters
 
-- [1. Requirements](requirements)
+- [1. Requirements](#requirements)
 - [2. Tools](#tools)
 - [3. How to use](#how-to-use)
 - [4. Time tests scraper](#time-tests-scraper)
@@ -16,9 +16,9 @@ A multi-stage system for crawling the web, enriching company data, syncing it to
 ## Requirements
 
 - Python 3.x
-- PostgreSQL (recommended `docker:latest`)
-- Java (17+ recommended)
-- Elasticsearch
+- PostgreSQL latest
+- Java 17
+- Elasticsearch latest
 
 ---
 
