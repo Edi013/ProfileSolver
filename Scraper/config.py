@@ -57,3 +57,4 @@ FORBIDDEN_EXTENSIONS = ('.zip', '.tar.gz', '.tar', '.gz', '.rar', '.7z')
 
 HTTPS_URL = 'https://'
 HTTP_URL = 'http://'
+CHUNK_SIZE = 10
