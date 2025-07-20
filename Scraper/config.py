@@ -58,6 +58,6 @@ FORBIDDEN_EXTENSIONS = ('.zip', '.tar.gz', '.tar', '.gz', '.rar', '.7z')
 HTTPS_URL = 'https://'
 HTTP_URL = 'http://'
 
-# DB_WORKS, be careful to not freeze your machine :)
+# DB_WORKS, be careful to not throttle your machine's power by raising this value too much
 # For a machine with 12cores and 24threads, I would go with 18 threads
-CHUNK_SIZE = 18
+CHUNK_SIZE = 24

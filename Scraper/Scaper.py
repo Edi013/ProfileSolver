@@ -199,8 +199,13 @@ def extract_title(soup):
 
 def scrape_company(initial_url, cursor):
     try:
-        name = initial_url.split('.')[0]
-        company_id = save_company(cursor, name)
+        company_id = save_company(cursor, initial_url)
+
+        if initial_url.startswith(HTTP_URL):
+            initial_url = initial_url.replace(HTTP_URL, HTTPS_URL)
+        elif not initial_url.startswith(HTTPS_URL):
+            initial_url = HTTPS_URL + initial_url
+
         queue = deque([])
         seen = {initial_url}
 
@@ -247,9 +252,10 @@ def process_url(cursor, company_id, url, queue, seen) -> bool:
             else:
                 soup = BeautifulSoup(content, 'lxml')
 
-            titles = extract_title(soup)
-            if titles:
-                update_company_names_bulk(cursor, company_id, titles)
+            # don't look for names in order to have a cleaner names array
+            #titles = extract_title(soup)
+            #if titles:
+                #update_company_names_bulk(cursor, company_id, titles)
 
             phone_nrs = extract_phone(soup)
             if phone_nrs:
@@ -317,11 +323,6 @@ class StopWatch:
 
 
 async def process_domain(domain):
-    if domain.startswith(HTTP_URL):
-        domain = domain.replace(HTTP_URL, HTTPS_URL)
-    elif not domain.startswith(HTTPS_URL):
-        domain = HTTPS_URL + domain
-
     conn, cursor = connect_db()
     try:
         await asyncio.to_thread(scrape_company, domain, cursor)

@@ -15,8 +15,9 @@ def connect_db():
     conn.autocommit = False
     return conn, conn.cursor()
 
-
+already_exists_contor = 0
 def merge_row(cursor, domain, details):
+    global already_exists_contor
     """
     For a given domain and detail dict, find or create the company,
     then insert each detail into the details table using LIKE matching for domain.
@@ -45,6 +46,7 @@ def merge_row(cursor, domain, details):
     row = cursor.fetchone()
     if row:
         already_exists = True
+        already_exists_contor +=1
         company_id = row[0]
     else:
         # 2) Insert new company with names = [domain]
@@ -55,16 +57,32 @@ def merge_row(cursor, domain, details):
         company_id = cursor.fetchone()[0]
     print(f"Already exists {already_exists}")
     # 3) Upsert each detail
+    ## use this to append it to names array in company table
     for d_type, d_value in details.items():
         if not d_value:
             continue
-        sql = (
-            f"INSERT INTO {DETAILS_TABLE}"
-            "(company_id, detail_type, detail_value) "
-            "VALUES (%s, %s, %s) "
-            "ON CONFLICT (company_id, detail_type, detail_value) DO NOTHING;"
+        # Only append if value not already present
+        cursor.execute(
+            f"""
+                UPDATE {COMPANIES_TABLE}
+                SET names = array_append(names, %s)
+                WHERE id = %s
+                  AND NOT (%s = ANY(names));
+                """,
+            (d_value, company_id, d_value)
         )
-        cursor.execute(sql, (company_id, d_type, d_value))
+
+    ## use this if you want to append it to the company_details as a detail_type, detail_value pair
+    # for d_type, d_value in details.items():
+    #     if not d_value:
+    #         continue
+    #     sql = (
+    #         f"INSERT INTO {DETAILS_TABLE}"
+    #         "(company_id, detail_type, detail_value) "
+    #         "VALUES (%s, %s, %s) "
+    #         "ON CONFLICT (company_id, detail_type, detail_value) DO NOTHING;"
+    #     )
+    #     cursor.execute(sql, (company_id, d_type, d_value))
 
 
 def main():
@@ -85,6 +103,7 @@ def main():
         conn.rollback()
         print(f"Error during merge: {e}")
     finally:
+        print(f"END - Matched {already_exists_contor} companies")
         cur.close()
         conn.close()
 
