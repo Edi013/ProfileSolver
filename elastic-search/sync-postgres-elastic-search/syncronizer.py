@@ -47,8 +47,10 @@ def transform_data(rows):
             companies[company_id] = {
                 'company_id': company_id,
                 'names': names,
-                'email': None,
                 'phone': None,
+                'address': None,
+                'location': None,
+                'email': None,
                 'website': None,
                 'facebook_profile': None,
                 'urls': [],
@@ -57,15 +59,18 @@ def transform_data(rows):
 
         # Map details to fields
         if detail_type and detail_value:
-            if detail_type == 'email':
-                companies[company_id]['email'] = detail_value
-            elif detail_type == 'phone':
+            if detail_type == 'phone':
                 companies[company_id]['phone'] = detail_value
-            elif detail_type == 'website':
-                companies[company_id]['website'] = detail_value
-            elif detail_type == 'facebook_profile':
-                companies[company_id]['facebook_profile'] = detail_value
-
+            elif detail_type == 'address':
+                companies[company_id]['address'] = detail_value
+            elif detail_type == 'location':
+                companies[company_id]['location'] = detail_value
+            # elif detail_type == 'facebook_profile':
+            #     companies[company_id]['facebook_profile'] = detail_value
+            # elif detail_type == 'email':
+            #     companies[company_id]['email'] = detail_value
+            # elif detail_type == 'website':
+            #     companies[company_id]['website'] = detail_value
         # Add urls with deduplication
         if url and reached and url not in companies[company_id]['_seen_urls']:
             companies[company_id]['urls'].append({

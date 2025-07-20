@@ -1,33 +1,68 @@
-# Profile Resolver project 
+# Profile Resolver Project
 
-## Short description & Chapters
+## Overview & Chapters
 
-[1. Scrape the web, store, analyze, merge with another data.](#1-scrape-the-web-store-analyze-merge-with-another-data)
+A multi-stage system for crawling the web, enriching company data, syncing it to databases and Elasticsearch, and exposing a REST API for powerful search capabilities.
 
-[2. Implement ElasticSearch over your db.](#2-implement-elasticsearch-over-your-db)
+### Chapters
 
-[3. Query ElasticSearch through an API. Take the user input and hit that API.](#3-query-elasticsearch-through-an-api-take-the-user-input-and-hit-that-api)
+- [1. Requirements]
+- [2. Tools]
+- [3. How to use]
+- [4. Time tests scraper]
 
-[4. Time tests scraper.](#4-time-tests-scraper)
+---
 
 ## Requirements
-- python 3.x.x
-- postgresql (docker:latest prefered)
-- java
 
-## IDEs
-- Intellij IDEA 2025
-- PyCharm 2025
-- pgAdmin4
-- terminal (git)
+- Python 3.x
+- PostgreSQL (recommended `docker:latest`)
+- Java (17+ recommended)
+- Elasticsearch
 
-## 1. Scrape the web, store, analyze, merge with another data.
+---
 
-## 2. Implement ElasticSearch over your db.
+## Tools
 
-## 3. Query ElasticSearch through an API. Take the user input and hit that API.
+- IntelliJ IDEA 2025 (Java API)
+- PyCharm 2025 (Python scripts)
+- pgAdmin4 (PostgreSQL management)
+- Terminal (Git, Docker, Curl)
 
-## 4. Time tests scraper.
+---
+
+## How to Use
+
+### 1. Scrape, store, analyze & merge data
+
+1.1 Initialize the database using the seed method in the scraper.
+1.2 Run the scraper. Higher `timeout` and `depth` values yield richer data.
+1.3 Use the unifier to merge additional datasets with your findings.
+
+---
+
+### 2. Integrate Elasticsearch with your database
+
+2.1 Start the Elasticsearch container.  
+2.2 Create the required index.  
+2.3 Sync data using the provided Python synchronizer script.  
+
+---
+
+### 3. Query ElasticSearch via a REST API
+
+3.1 Start the API:
+```
+mvn spring-boot:run
+```
+
+3.2 Hit the endpoint
+
+```
+http://localhost:8080/api/companies/search?query=key_word_about_company
+```
+
+## Time tests scraper
 
 Context:
 - my machine has 12cores, 24 threads.

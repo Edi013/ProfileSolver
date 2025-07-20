@@ -19,6 +19,8 @@ public class Company {
     private String companyId;  // ES document id, mapped from your DB id
 
     private String names;
+    private String address;
+    private String location;
 
     private String email;
     private String phone;
