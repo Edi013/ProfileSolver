@@ -316,8 +316,6 @@ class StopWatch:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-
-
 async def process_domain(domain):
     if domain.startswith(HTTP_URL):
         domain = domain.replace(HTTP_URL, HTTPS_URL)
@@ -332,7 +330,7 @@ async def process_domain(domain):
         conn.close()
 
 
-async def main_async(initial_domains, db_config):
+async def main_async(initial_domains):
     sw = StopWatch()
     sw.start()
     try:
@@ -341,14 +339,13 @@ async def main_async(initial_domains, db_config):
             print('No company urls provided.')
             return
 
-        # Split domains into chunks
         for i in range(0, total_domains, CHUNK_SIZE):
             chunk = initial_domains[i:i+CHUNK_SIZE]
             print(f"Processing domains {i+1} to {i+len(chunk)} of {total_domains}")
 
             # Create coroutine tasks for this chunk
             tasks = [
-                process_domain(domain, db_config)
+                process_domain(domain)
                 for domain in chunk
             ]
 
@@ -366,7 +363,6 @@ async def main_async(initial_domains, db_config):
 
 if __name__ == '__main__':
     initial_domains = load_initial_urls()
-    db_config = DB_CONFIG
-    asyncio.run(main_async(initial_domains, db_config))
+    asyncio.run(main_async(initial_domains))
 
 
