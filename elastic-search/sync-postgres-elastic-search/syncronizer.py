@@ -51,7 +51,8 @@ def transform_data(rows):
                 'phone': None,
                 'website': None,
                 'facebook_profile': None,
-                'urls': []
+                'urls': [],
+                '_seen_urls': set()  # temporary for deduplication
             }
 
         # Map details to fields
@@ -65,12 +66,17 @@ def transform_data(rows):
             elif detail_type == 'facebook_profile':
                 companies[company_id]['facebook_profile'] = detail_value
 
-        # Add urls (exclude reached = false if you want)
-        if url and reached:
+        # Add urls with deduplication
+        if url and reached and url not in companies[company_id]['_seen_urls']:
             companies[company_id]['urls'].append({
                 'url': url,
                 'reached': reached
             })
+            companies[company_id]['_seen_urls'].add(url)
+
+    # Remove the helper set before returning
+    for c in companies.values():
+        del c['_seen_urls']
 
     return list(companies.values())
 
