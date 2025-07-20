@@ -6,10 +6,10 @@ A multi-stage system for crawling the web, enriching company data, syncing it to
 
 ### Chapters
 
-- [1. Requirements]
-- [2. Tools]
-- [3. How to use]
-- [4. Time tests scraper]
+- [1. Requirements](requirements)
+- [2. Tools](#tools)
+- [3. How to use](#how-to-use)
+- [4. Time tests scraper](#time-tests-scraper)
 
 ---
 
