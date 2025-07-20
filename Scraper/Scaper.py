@@ -1,6 +1,7 @@
 import csv
 from sqlite3 import IntegrityError
-
+import asyncio
+from functools import partial
 import requests
 from bs4 import BeautifulSoup
 import psycopg2
@@ -15,7 +16,8 @@ from config import (
     INITIAL_URLS_CSV_PATH,
     MAX_DEPTH_PER_DOMAIN,
     FORBIDDEN_EXTENSIONS,
-    HTTPS_URL, HTTP_URL
+    HTTPS_URL, HTTP_URL,
+    CHUNK_SIZE
 )
 
 # Indices for TABLE_NAMES
@@ -197,8 +199,13 @@ def extract_title(soup):
 
 def scrape_company(initial_url, cursor):
     try:
-        name = initial_url.split('.')[0]
-        company_id = save_company(cursor, name)
+        company_id = save_company(cursor, initial_url)
+
+        if initial_url.startswith(HTTP_URL):
+            initial_url = initial_url.replace(HTTP_URL, HTTPS_URL)
+        elif not initial_url.startswith(HTTPS_URL):
+            initial_url = HTTPS_URL + initial_url
+
         queue = deque([])
         seen = {initial_url}
 
@@ -245,9 +252,10 @@ def process_url(cursor, company_id, url, queue, seen) -> bool:
             else:
                 soup = BeautifulSoup(content, 'lxml')
 
-            titles = extract_title(soup)
-            if titles:
-                update_company_names_bulk(cursor, company_id, titles)
+            # don't look for names in order to have a cleaner names array
+            #titles = extract_title(soup)
+            #if titles:
+                #update_company_names_bulk(cursor, company_id, titles)
 
             phone_nrs = extract_phone(soup)
             if phone_nrs:
@@ -314,31 +322,48 @@ class StopWatch:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-if __name__ == '__main__':
-    initial_domains = load_initial_urls()
+async def process_domain(domain):
     conn, cursor = connect_db()
+    try:
+        await asyncio.to_thread(scrape_company, domain, cursor)
+    finally:
+        cursor.close()
+        conn.close()
+
+
+async def main_async(initial_domains):
     sw = StopWatch()
     sw.start()
     try:
-        if initial_domains:
-            current_domain_contor = 1
-            for domain in initial_domains:
-                if domain.startswith(HTTP_URL):
-                    domain = domain.replace(HTTP_URL, HTTPS_URL)
-                elif not domain.startswith(HTTPS_URL):
-                    domain = HTTPS_URL + domain
-                print(f"Initial domains: {current_domain_contor} / {len(initial_domains)}")
-                scrape_company(domain, cursor)
-                current_domain_contor+=1
-                print(f"Elapsed time since start: {sw.elapsed()}")
-        else:
+        total_domains = len(initial_domains)
+        if total_domains == 0:
             print('No company urls provided.')
+            return
+
+        for i in range(0, total_domains, CHUNK_SIZE):
+            chunk = initial_domains[i:i+CHUNK_SIZE]
+            print(f"Processing domains {i+1} to {i+len(chunk)} of {total_domains}")
+
+            # Create coroutine tasks for this chunk
+            tasks = [
+                process_domain(domain)
+                for domain in chunk
+            ]
+
+            # Run all coroutines in this chunk concurrently
+            await asyncio.gather(*tasks)
+            print(f"Elapsed time since start: {sw.elapsed()}")
+
     except Exception as e:
         print(f"Total elapsed time: {sw.elapsed()}. Script managed to close safely, even though it was terminated abruptly.")
         print(f"Exception: {e}")
     finally:
-        cursor.close()
-        conn.close()
-    sw.stop()
-    print(f"Total elapsed time: {sw.elapsed()}")
+        sw.stop()
+        print(f"Total elapsed time: {sw.elapsed()}")
+
+
+if __name__ == '__main__':
+    initial_domains = load_initial_urls()
+    asyncio.run(main_async(initial_domains))
+
 
