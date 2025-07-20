@@ -1,0 +1,66 @@
+{
+  "settings": {
+    "analysis": {
+      "tokenizer": {
+        "edge_ngram_tok": {
+          "type": "edge_ngram",
+          "min_gram": 3,
+          "max_gram": 20,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
+      },
+      "analyzer": {
+        "edge_ngram_analyzer": {
+          "tokenizer": "edge_ngram_tok",
+          "filter": ["lowercase"]
+        },
+        "lowercase_standard": {
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "company_id": {
+        "type": "integer"
+      },
+      "names": {
+        "type": "text",
+        "analyzer": "edge_ngram_analyzer",
+        "search_analyzer": "lowercase_standard",
+        "fields": {
+          "keyword": { "type": "keyword" }
+        }
+      },
+      "email": {
+        "type": "text",
+        "analyzer": "edge_ngram_analyzer",
+        "search_analyzer": "lowercase_standard",
+        "fields": {
+          "keyword": { "type": "keyword" }
+        }
+      },
+      "phone": {
+        "type": "keyword"
+      },
+      "website": {
+        "type": "keyword"
+      },
+      "facebook_profile": {
+        "type": "keyword"
+      },
+      "urls": {
+        "type": "nested",
+        "properties": {
+          "url":     { "type": "keyword" },
+          "reached": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

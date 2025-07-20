@@ -1,0 +1,9 @@
+docker exec -t scraper-postgres-1 pg_dump -U postgres CompaniesDataDb > CompaniesDataDb_dump.sql
+
+To mount this db inside a new container :
+1. create it:
+docker run --name new-postgres -e POSTGRES_PASSWORD=1234 -d -p 5433:5432 postgres:latest
+2. create the db inside the new container :
+docker exec -it new-postgres psql -U postgres -c "CREATE DATABASE CompaniesDataDb;"
+3. Restore this dump file into the new db :
+cat CompaniesDataDb_dump.sql | docker exec -i new-postgres psql -U postgres -d CompaniesDataDb
