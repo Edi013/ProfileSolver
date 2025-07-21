@@ -10,6 +10,8 @@ A multi-stage system for crawling the web, enriching company data, synchronizing
 - [2. Tools](#tools)
 - [3. How to use](#how-to-use)
 - [4. Time tests scraper](#time-tests-scraper)
+- [5. Database diagram](#database-diagram)
+- [6. Preview](#preview)
 
 ---
 
@@ -73,3 +75,13 @@ Chunck size = how many threads will python access :
 - 18 = 11m 31s
 - 23 = 10m 34s
 - 24 = 10m 13s
+
+## Database diagram
+
+<img width="699" height="472" alt="db-diagram" src="https://github.com/user-attachments/assets/eb448e52-5d22-493c-9dde-5a3415986fd8" />
+
+
+## Preview 
+Hitting the API through Postman, it queries ElasticSearch and respondes with a json. 
+
+<img width="2560" height="1433" alt="Postman-Syncronizer-Spring" src="https://github.com/user-attachments/assets/0d4b25cf-b5bc-4c18-907b-3a8250da3c78" />
