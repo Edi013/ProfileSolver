@@ -1,0 +1,77 @@
+Coverage :
+
+1. Companies reached successfully - 591:
+```
+SELECT
+  COUNT(DISTINCT company_id) AS companies_reached
+FROM
+  company_details;
+```
+2. URLs found 4036, reached 2910, unreached 1125.
+```
+SELECT
+  reached,
+  COUNT(*) AS ammount
+FROM urls
+GROUP BY reached;
+
+select count(*) as UrlsFound from urls;
+```
+3. Target details phone, location, address + url
+```
+select c.detail_type
+from company_details c
+group by c.detail_type
+```
+Fill rates:
+
+1. 2944 phone nrs, 761 locaitons, 18580 addresses:
+```
+select count(cd.detail_type), cd.detail_type
+from company_details cd
+group by cd.detail_type
+```
+
+2. For 527 companies where found more than 1 name (including domain)
+```
+SELECT *
+FROM companies
+WHERE cardinality(names) > 1;
+```
+3. Reached urls count per total urls count per company. See 'data_per_company .csv':
+```
+  SELECT
+    company_id,
+    COUNT(*)                        AS url_count,
+    COUNT(*) FILTER (WHERE reached) AS reached_count
+  FROM urls
+  GROUP BY company_id
+```
+4. Based on 3. Fill rates of reached urls / total urls per company aggreged by total amount of companies. Percentage of urls reached/unreached per companies:
+- 67.70% companies with reached urls;
+- 32.29% companies with unreached urls;
+```
+WITH company_urls AS (
+  SELECT
+    company_id,
+    COUNT(*)                        AS url_count,
+    COUNT(*) FILTER (WHERE reached) AS reached_count
+  FROM urls
+  GROUP BY company_id
+)
+SELECT
+  -- % of companies that have ≥1 URL *and* ≥1 reached URL
+  COUNT(*) FILTER (
+    WHERE url_count > 0
+      AND reached_count > 0
+  ) * 100.0 / COUNT(*) AS pct_companies_with_reached_url,
+
+  -- % of companies that have ≥1 URL but 0 reached
+  COUNT(*) FILTER (
+    WHERE url_count > 0
+      AND reached_count = 0
+  ) * 100.0 / COUNT(*) AS pct_companies_with_unreached_only,
+FROM company_urls;
+```
+
+

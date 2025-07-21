@@ -1,0 +1,84 @@
+select * from urls;
+select * from companies;
+select * from company_details;
+
+-- or using cardinality()
+SELECT
+  COUNT(*) AS only_one_name
+FROM
+  companies
+WHERE
+  cardinality(names) = 1;
+
+-- Coverage
+select count(*) as UrlsFound from urls;
+select urls as Reached from urls where reached=True;
+select urls as Unreached from urls where reached=False;
+--
+SELECT
+  COUNT(DISTINCT company_id) AS companies_reached
+FROM
+  company_details;
+--
+SELECT
+  reached,
+  COUNT(*) AS ammount
+FROM urls
+GROUP BY reached;
+--
+
+-- Fill rates
+select * from company_details cd;
+select count(company_id) as TotalAmountOfDetailsGathered from company_details cd ;
+select count(distinct company_id) as TotalCompaniesCovered from company_details;
+-- details type and count
+select count(cd.detail_type), cd.detail_type
+from company_details cd
+group by cd.detail_type
+--
+WITH company_urls AS (
+  SELECT
+    company_id,
+    COUNT(*)                        AS url_count,
+    COUNT(*) FILTER (WHERE reached) AS reached_count
+  FROM urls
+  GROUP BY company_id
+)
+SELECT
+  -- % of companies that have ≥1 URL *and* ≥1 reached URL
+  COUNT(*) FILTER (
+    WHERE url_count > 0
+      AND reached_count > 0
+  ) * 100.0 / COUNT(*) AS pct_companies_with_reached_url,
+
+  -- % of companies that have ≥1 URL but 0 reached
+  COUNT(*) FILTER (
+    WHERE url_count > 0
+      AND reached_count = 0
+  ) * 100.0 / COUNT(*) AS pct_companies_with_unreached_only,
+FROM company_urls;
+--
+select
+	max(c.id) as cId,
+	max(u.company_id) as uId,
+	max(cd.company_id) as cdId
+from
+	companies c
+full join
+	company_details cd
+on
+	c.id = cd.company_id
+full join
+	urls u
+on
+	c.id = u.company_id;
+--
+SELECT count(*)
+FROM companies
+WHERE cardinality(names) > 1;
+--
+break the script to prevent data alteration
+
+TRUNCATE
+	TABLE company_details, urls, companies
+RESTART IDENTITY CASCADE;

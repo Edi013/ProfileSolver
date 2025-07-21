@@ -1,0 +1,21 @@
+curl http://localhost:9200/_cluster/health?pretty
+
+
+2. to create the companies index-settings:
+curl -X PUT "http://localhost:9200/companies" \
+  -H "Content-Type: application/json" \
+  -d @/home/edi/Dev/ProfileResolver/elastic-search/index-settings.json
+
+  Response : {"acknowledged":true,"shards_acknowledged":true,"index":"companies"}
+
+3. to delete the companies index :
+curl -X DELETE "http://localhost:9200/companies"
+
+4. check status of index:
+- curl -X GET "http://localhost:9200/_cat/indices?v"
+- curl -X GET "http://localhost:9200/companies?pretty"
+
+
+
+To run syncronizer.py do :
+1. pip install psycopg2-binary elasticsearch

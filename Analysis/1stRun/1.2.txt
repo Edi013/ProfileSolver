@@ -1,0 +1,22 @@
+1. 1807 entries in table urls, deci 1807 site-uri procesate.
+    Desi numarul de site-uri este 1807, scraper ul a gasit (sau crede ca a gasit) 1000 de companii.
+    Atasez ss pentru cele mentionate anterior.
+
+
+2. Fill rates :
+- 374 phone numbers
+- 918 locations
+- 1163 addresses
+All for 1807 urls parsed and 1000 companies reached.
+
+After first run, I started optimizing it by looking at:
+- the tags considered for each address, location, title
+- the quantity of calls againt the db : refactored single inserts into bulk inserts.
+- the keywords for address, locations
+- the regex for phone number
+- the find title method.
+
+Runs count:
+1. 1000c 35m,    0.035 min/company (~2.1 sec/company)
+2. 388c  11:45m, 0.0303 min/company (~1.8 sec/company)
+

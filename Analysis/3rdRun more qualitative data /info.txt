@@ -1,0 +1,38 @@
+Time 29m 59s (only https)
+Coverage:
+    - 1444urls, 957 reached, 487unreached
+    - 997 companii totale, 494 comapanii detaliate
+Fill rates:
+    - 8804 details gathered
+    - 893 phone numbers
+    - 7540 addresses
+    - 371 locations
+
+
+Date per companie
+- 494/997 = 49.54% companii pentru care au fost gasite date / companii totale
+
+Urls per companie
+- 957/494 = 1.93 urls per companie ( dintre cele acoperite cu succes)
+- 1444/997 = 1.44 urls per comapnie din total
+- 957/1444 = url-uri atinse sau valide / url-uri totale
+
+Detalii per companie :
+- 8804/494 = 17.82 detalii per companie ( dintre cele acoperite )
+- 8804/997 = 8.83 detalii per companie din totalul comapniilor
+
+The queries:
+-- Coverage
+select urls as Coverage from urls;
+select urls as Reached from urls where reached=True;
+select urls as Unreached from urls where reached=False
+select
+    urls as Coverage,
+    case when reached = TRUE then urls end as Reached,
+    case when reached = FALSE then urls end as Unreached
+from urls;
+-- Fill rates
+select * from company_details cd;
+select count(company_id) as TotalAmountOfDetailsGathered from company_details cd ;
+select count(distinct company_id) as TotalCompaniesCovered from company_details;
+select count(company_id) DetailsPerCompany, company_id from company_details cd group by cd.company_id ;

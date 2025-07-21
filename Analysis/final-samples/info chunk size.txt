@@ -1,0 +1,9 @@
+Context:
+- my machine has 12cores, 24 threads.
+- max depth per domain = 5.
+- timeout per request = 3s.
+
+Chunck size = how many threads will python access :
+- 18 = 11m 31s
+- 23 = 10m 34s
+- 24 = 10m 13s
