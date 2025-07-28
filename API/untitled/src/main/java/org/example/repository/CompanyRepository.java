@@ -9,6 +9,5 @@ import java.util.List;
 @Repository
 public interface CompanyRepository extends ElasticsearchRepository<Company, String> {
 
-    // Search by names or email containing a keyword (simple example)
-    List<Company> findByNamesContainingIgnoreCaseOrEmailContainingIgnoreCase(String names, String email);
+    List<Company> findByNamesContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContainingIgnoreCase(String names, String email, String phone);
 }

@@ -16,7 +16,7 @@ import java.util.Map;
 public class Company {
 
     @Id
-    private String companyId;  // ES document id, mapped from your DB id
+    private String companyId;
 
     private String names;
     private String address;
@@ -27,5 +27,5 @@ public class Company {
     private String website;
     private String facebookProfile;
 
-    private List<Map<String, Object>> urls;  // Store urls as list of maps, e.g. [{"url":"x","reached":true}]
+    private List<Map<String, Object>> urls;
 }
